@@ -24,7 +24,7 @@ CHART_CONFIG = {
 # Helper function to generate next 48-hour dropdown options
 def generate_time_options():
     now = datetime.now(HOCHFUEGEN_TZ)
-    options = [(now + timedelta(hours=i)).strftime("%Y-%m-%d %H:00") for i in range(48)]
+    options = [(now + timedelta(hours=i)).strftime("%d-%m-%Y %H:00") for i in range(48)]
     return options
 
 # Setup the Open-Meteo API client with cache and retry on error
@@ -131,9 +131,7 @@ if st.button("Get Forecast"):
 
     # Snowfall API request
     try:
-        snowfall_response = requests.post(
-            snowfall_api_url, json={"date": selected_date, "hour": selected_hour}
-        )
+        snowfall_response = requests.get(snowfall_api_url)
         if snowfall_response.status_code == 200:
             snowfall_data = snowfall_response.json()
             first_predict_time = snowfall_data.get("first_predict_time")
@@ -152,9 +150,7 @@ if st.button("Get Forecast"):
 
     # Temperature API request
     try:
-        temperature_response = requests.post(
-            temperature_api_url, json={"date": selected_date, "hour": selected_hour}
-        )
+        temperature_response = requests.get(temperature_api_url)
         if temperature_response.status_code == 200:
             temperature_data = temperature_response.json()
             temperature_predictions = temperature_data.get("temperature_prediction", [])
