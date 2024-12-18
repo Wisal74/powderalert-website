@@ -1,1 +1,5 @@
 streamlit
+plotly==5.15.0
+retry-requests
+openmeteo-requests
+requests-cache
