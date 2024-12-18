@@ -10,9 +10,10 @@ import requests_cache
 
 # Constants
 HOCHFUEGEN_TZ = pytz.timezone("Europe/Vienna")
-WEBCAM_URL = "https://sts210.feratel.co.at/streams/stsstore203/1/05560_6762951a-cbf7Vid.mp4?dcsdesign=WTP_bergfex.at"
+#"https://sts210.feratel.co.at/streams/stsstore203/1/05560_6762951a-cbf7Vid.mp4?dcsdesign=WTP_bergfex.at"
+WEBCAM_URL = "https://sts202.feratel.co.at/streams/stsstore205/1/05560_6762caa9-125aVid.mp4?dcsdesign=WTP_feratel.com"
 # Dark blue theme colors
-DARK_BLUE = 'rgba(25, 25, 112, 0.5)'  # Dark blue with 0.9 opacity
+DARK_BLUE = 'rgba(129, 203, 199, 0.5)'  # Dark blue with 0.9 opacity
 LIGHT_TEXT = '#FFFFFF'  # White text for contrast
 GRID_COLOR = 'rgba(255, 255, 255, 0.2)'  # Subtle white grid
 CHART_CONFIG = {
@@ -74,16 +75,15 @@ def create_forecast_chart(data):
         x='date',
         y='value',
         color='variable',  # Different colors for Snow Depth and Temperature
-        title="7-Day Snow Depth and Temperature Forecast",
         labels={'value': 'Measurement', 'variable': 'Legend'},
     )
 
     # Update layout for styling
     fig.update_layout(
-        xaxis_title="Date",
-        yaxis_title="Measurement",
+        #xaxis_title="Date",
+        #yaxis_title="Measurement",
         template="plotly_white",
-        paper_bgcolor=CHART_CONFIG['background_color'],
+        paper_bgcolor='#373737',
         plot_bgcolor=CHART_CONFIG['background_color'],
         font_color=CHART_CONFIG['font_color'],
         xaxis=dict(
@@ -95,7 +95,6 @@ def create_forecast_chart(data):
             showgrid=True
         )
     )
-
     return fig
 
 
@@ -110,15 +109,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("#### Snowfall Forecast")
-snowfall_placeholder = st.empty()
-st.markdown("#### Temperature Forecast")
-temperature_placeholder = st.empty()
 
 # Dropdown for time selection
 st.header("Choose Forecast Time")
 time_options = generate_time_options()
-selected_time = st.selectbox("Select Date and Time:", time_options)
+selected_time = st.selectbox("Select Date and Time:", time_options, label_visibility='collapsed')
 
 # Forecast button
 if st.button("Get Forecast"):
@@ -134,19 +129,21 @@ if st.button("Get Forecast"):
         snowfall_response = requests.get(snowfall_api_url)
         if snowfall_response.status_code == 200:
             snowfall_data = snowfall_response.json()
-            first_predict_time = snowfall_data.get("first_predict_time")
+            #first_predict_time = snowfall_data.get("first_predict_time")
             snowfall_predictions = snowfall_data.get("snowfall_prediction", [])
 
             # Display snowfall predictions
-            snowfall_placeholder.metric(
+            st.markdown("#### Snowfall Forecast")
+            snowfall_placeholder = st.metric(
                 label="Predicted Snowfall (cm)",
-                value=f"{snowfall_predictions[0]:.2f}" if snowfall_predictions else "N/A",
-                delta=f"First prediction at {first_predict_time}" if first_predict_time else "N/A"
+                value=f"{snowfall_predictions[0]:.2f} cm" if snowfall_predictions else "N/A",
+                label_visibility='collapsed'
+                #delta=f"First prediction at {first_predict_time}" if first_predict_time else "N/A"
             )
         else:
-            snowfall_placeholder.error("Error retrieving snowfall data.")
+            "Error retrieving snowfall data."
     except Exception as e:
-        snowfall_placeholder.error(f"Error: {e}")
+        f"Error: {e}"
 
     # Temperature API request
     try:
@@ -156,20 +153,23 @@ if st.button("Get Forecast"):
             temperature_predictions = temperature_data.get("temperature_prediction", [])
 
             # Display temperature predictions
-            temperature_placeholder.metric(
+            st.markdown("#### Temperature Forecast")
+            temperature_placeholder = st.metric(
                 label="Predicted Temperature (°C)",
-                value=f"{temperature_predictions[0]:.2f}" if temperature_predictions else "N/A"
+                label_visibility='collapsed',
+                value=f"{round(temperature_predictions[0])} °C" if temperature_predictions else "N/A"
             )
         else:
-            temperature_placeholder.error("Error retrieving temperature data.")
+            "Error retrieving temperature data."
     except Exception as e:
-        temperature_placeholder.error(f"Error: {e}")
+        f"Error: {e}"
 
 # Display forecast chart
-    st.plotly_chart(
-        create_forecast_chart(hourly_dataframe),
-        use_container_width=True
-    )
+st.markdown("#### Previous 7 days snow depth (cm) and temperature (°C)")
+st.plotly_chart(
+    create_forecast_chart(hourly_dataframe),
+    use_container_width=True
+)
 
 # Styling for the wintery blue theme
 st.markdown(
@@ -184,11 +184,32 @@ st.markdown(
         font-weight: bold;
     }
     iframe {
-        border-radius: 16px;
+        border-radius: 16px; /* Rounded corners for iframe */
+    }
+    /* Custom selectbox size */
+    div[data-baseweb="select"] {
+        width: 200px !important;
+    }
+    /* Customize button */
+    div.stButton > button {
+        background-color: #373737 !important; /* Button background color */
+        color: #81CBC7 !important; /* Button text color */
+        border-radius: 8px; /* Rounded corners for the button */
+        border-color: #81CBC7; /* Remove button border */
+        font-weight: bold;
+        font-size: 16px;
+    }
+        /* Button hover effect */
+    div.stButton > button:hover {
+        background-color: #81CBC7 !important; /* Background color on hover */
+        color: #373737 !important; /* Text color on hover */
+        border: 2px solid #81CBC7 !important; /* Border color on hover */
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
 #https://powderalert-884569188278.europe-west1.run.app/predict_snowfall?lat=47.26580883196723&long=11.84457426992035
 #https://powderalert-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035
