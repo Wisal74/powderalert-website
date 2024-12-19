@@ -10,7 +10,7 @@ import requests_cache
 
 # Constants
 HOCHFUEGEN_TZ = pytz.timezone("Europe/Vienna")
-WEBCAM_URL = "https://sts005.feratel.co.at/streams/stsstore002/1/05560_6763e65e-4693Vid.mp4?dcsdesign=WTP_bergfex.at"
+WEBCAM_URL = "https://sts110.feratel.co.at/streams/stsstore102/1/05560_67643e52-9f73Vid.mp4?dcsdesign=WTP_bergfex.at"
 APRES_URL = "https://media.giphy.com/media/vwfcIIFVCEQCs8cFAs/giphy.gif"
 POWDER_URL = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnphNWxwMWFrc3p4ejhqcTN0Ymt2eXgxaHdwam9ia2RlaG1qaHJlMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UQJqOcrkNHK7BlJYBo/giphy.gif"
 # Dark blue theme colors
@@ -40,8 +40,8 @@ url = "https://api.open-meteo.com/v1/forecast"
 params = {
     "latitude": 47.26580883196723,
     "longitude": 11.84457426992035,
-    'past_days': 7,
-    'forecast_days': 0,
+    'past_hours': 7 * 24,
+    'forecast_hours': 0,
     "hourly": ["temperature_2m", "relative_humidity_2m", "dew_point_2m", "precipitation", "rain", "snowfall", "snow_depth", "weather_code", "pressure_msl", "surface_pressure", "cloud_cover", "cloud_cover_low", "cloud_cover_mid", "cloud_cover_high", "et0_fao_evapotranspiration", "vapour_pressure_deficit", "wind_speed_10m", "wind_speed_120m", "wind_direction_10m", "wind_direction_120m", "wind_gusts_10m", "soil_temperature_0cm", "soil_temperature_6cm", "soil_temperature_18cm", "soil_temperature_54cm", "soil_moisture_0_to_1cm", "soil_moisture_1_to_3cm", "soil_moisture_3_to_9cm", "soil_moisture_9_to_27cm", "soil_moisture_27_to_81cm"]
 }
 responses = openmeteo.weather_api(url, params=params)
@@ -64,21 +64,28 @@ hourly_data["Snow Depth"] = hourly_snow_depth * 100
 hourly_data["Temperature"] =hourly_temperature
 hourly_dataframe = pd.DataFrame(data = hourly_data)
 
-def fetch_combined_data(snowfall_url, temperature_url):
+def fetch_combined_data(snowdepth_url, temperature_url):
     try:
         # Fetch snowfall data
-        snowfall_response = requests.get(snowfall_url)
-        if snowfall_response.status_code == 200:
-            snowfall_data = snowfall_response.json()
-            snowfall_first_predict_time = datetime.strptime(snowfall_data["first_predict_time"], "%Y-%m-%dT%H:%M")
-            snowfall_predictions = snowfall_data["snowfall_prediction"]
-            snowfall_dates = [snowfall_first_predict_time + timedelta(hours=i) for i in range(len(snowfall_predictions))]
+        snowdepth_response = requests.get(snowdepth_url)
+        if snowdepth_response.status_code == 200:
+            snowdepth_data = snowdepth_response.json()
+            snowdepth_first_predict_time = datetime.strptime(snowdepth_data["first_predict_time"], "%Y-%m-%dT%H:%M")
+            snowdepth_list = snowdepth_data["snowdepth_prediction"]
+            snowdepth_predictions = []
+            for i in snowdepth_list:
+                snowdepth_predictions.append(i*100)
+            #breakpoint()
+            # st.write(snowdepth_predictions)
+            # st.write(type(snowdepth_predictions))
+            snowdepth_dates = [snowdepth_first_predict_time + timedelta(hours=i) for i in range(len(snowdepth_predictions))]
         else:
-            print(f"Error: Snowfall API returned status code {snowfall_response.status_code}")
+            print(f"Error: Snowfall API returned status code {snowdepth_response.status_code}")
             return None
 
         # Fetch temperature data
         temperature_response = requests.get(temperature_url)
+
         if temperature_response.status_code == 200:
             temperature_data = temperature_response.json()
             temperature_first_predict_time = datetime.strptime(temperature_data["first_predict_time"], "%Y-%m-%dT%H:%M")
@@ -89,10 +96,10 @@ def fetch_combined_data(snowfall_url, temperature_url):
             return None
 
         # Ensure data alignment and combine into a single DataFrame
-        if snowfall_dates == temperature_dates:
+        if snowdepth_dates == temperature_dates:
             combined_df = pd.DataFrame({
-                "date": snowfall_dates,
-                "Snowfall": snowfall_predictions,
+                "date": snowdepth_dates,
+                "Snow Depth": snowdepth_predictions,
                 "Temperature": temperature_predictions
             })
             return combined_df
@@ -157,6 +164,8 @@ st.markdown("##### ")
 st.markdown("### Choose Forecast Time")
 time_options = generate_time_options()
 selected_time = st.selectbox("Select Date and Time:", time_options, label_visibility='collapsed')
+selected_time_dt = datetime.strptime(selected_time, "%d-%m-%Y %H:00")
+
 
 # Forecast button
 if st.button("Get Forecast"):
@@ -164,10 +173,10 @@ if st.button("Get Forecast"):
     # Extract date and hour from selected time
     selected_date, selected_hour = selected_time.split(" ")
 
-    # Placeholder API endpoints
-    snowfall_api_url = "https://powderalert-884569188278.europe-west1.run.app/predict_snowfall?lat=47.26580883196723&long=11.84457426992035"
-    temperature_api_url = "https://powderalert-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035"
-
+    # API endpoints
+    snowdepth_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_snowdepth?lat=47.26580883196723&long=11.84457426992035"
+    temperature_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035"
+    windspeed_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_windspeed?lat=47.26580883196723&long=11.84457426992035"
     col1, col2, col3, = st.columns([1, 1, 1])
 
     with col1:
@@ -176,32 +185,52 @@ if st.button("Get Forecast"):
             temperature_response = requests.get(temperature_api_url)
             if temperature_response.status_code == 200:
                 temperature_data = temperature_response.json()
+                temperature_first_predict_time = datetime.strptime(temperature_data["first_predict_time"], "%Y-%m-%dT%H:%M")
                 temperature_predictions = temperature_data.get("temperature_prediction", [])
+
+                # Generate the list of prediction times
+                temperature_dates = [temperature_first_predict_time + timedelta(hours=i) for i in range(len(temperature_predictions))]
+
+                # Find the prediction matching the selected time
+                if selected_time_dt in temperature_dates:
+                    temperature_index = temperature_dates.index(selected_time_dt)
+                    selected_temperature = temperature_predictions[temperature_index]
+                else:
+                    selected_temperature = "N/A"
 
                 # Display temperature predictions
                 st.markdown("#### Temperature")
                 temperature = st.metric(
-                    label="Predicted Temperature (°C)",
-                    label_visibility='collapsed',
-                    value=f"{round(temperature_predictions[0])} °C" if temperature_predictions else "N/A"
-                )
+                                        label="Predicted Temperature (°C)",
+                                        label_visibility='collapsed',
+                                        value=f"{round(selected_temperature)} °C" if selected_temperature != "N/A" else selected_temperature
+                                        )
             else:
-                "Error retrieving temperature data."
+                selected_temperature = "Error retrieving data"
         except Exception as e:
             f"Error: {e}"
     with col2:
     # Snow depth API request
         try:
-            snowdepth_response = requests.get(snowfall_api_url)
+            snowdepth_response = requests.get(snowdepth_api_url)
             if snowdepth_response.status_code == 200:
                 snowdepth_data = snowdepth_response.json()
-                snowdepth_predictions = snowdepth_data.get("snowfall_prediction", [])
+                snowdepth_first_predict_time = datetime.strptime(snowdepth_data["first_predict_time"], "%Y-%m-%dT%H:%M")
+                snowdepth_predictions = snowdepth_data.get("snowdepth_prediction", [])
+
+                # Generate the list of prediction times
+                snowdepth_dates = [snowdepth_first_predict_time + timedelta(hours=i) for i in range(len(snowdepth_predictions))]
+
+                # Find the prediction matching the selected time
+                if selected_time_dt in snowdepth_dates:
+                    snowdepth_index = snowdepth_dates.index(selected_time_dt)
+                    selected_snowdepth = snowdepth_predictions[snowdepth_index] * 100
 
                 # Display snowdepth predictions
                 st.markdown("#### Snow Depth")
                 snowdepth = st.metric(
-                    label="Predicted Snowfall (cm)",
-                    value=f"{snowdepth_predictions[0]:.2f} cm" if snowdepth_predictions else "N/A",
+                    label="Predicted Snow Depth (cm)",
+                    value=f"{round(selected_snowdepth)} cm" if selected_snowdepth != "N/A" else selected_snowdepth,
                     label_visibility='collapsed'
                 )
             else:
@@ -211,38 +240,49 @@ if st.button("Get Forecast"):
     with col3:
         # Wind speed API request
         try:
-            windspeed_response = requests.get(temperature_api_url)
+            windspeed_response = requests.get(windspeed_api_url)
             if temperature_response.status_code == 200:
                 windspeed_data = windspeed_response.json()
-                windspeed_predictions = windspeed_data.get("temperature_prediction", [])
+                windspeed_first_predict_time = datetime.strptime(windspeed_data["first_predict_time"], "%Y-%m-%dT%H:%M")
+                windspeed_predictions = windspeed_data.get("windspeed_prediction", [])
+
+                # Generate the list of prediction times
+                windspeed_dates = [windspeed_first_predict_time + timedelta(hours=i) for i in range(len(windspeed_predictions))]
+
+                # Find the prediction matching the selected time
+                if selected_time_dt in windspeed_dates:
+                    windspeed_index = windspeed_dates.index(selected_time_dt)
+                    selected_windspeed = windspeed_predictions[windspeed_index]
 
                 # Display wind speed predictions
                 st.markdown("#### Wind Speed")
                 windspeed = st.metric(
                     label="Predicted Temperature (°C)",
                     label_visibility='collapsed',
-                    value=f"{round(windspeed_predictions[0])} km/h" if windspeed_predictions else "N/A"
+                    value=f"{round(selected_windspeed)} km/h" if selected_windspeed != "N/A" else selected_windspeed
                 )
             else:
                 "Error retrieving temperature data."
         except Exception as e:
             f"Error: {e}"
-
-    if temperature_predictions[0] < 0:
+    st.markdown("#### ")
+    if selected_temperature < 0:
         st.markdown("## Put that pint down and go home !")
+        st.markdown("##### ")
         st.image(POWDER_URL)
-    elif temperature_predictions[0] >= 0:
+    elif selected_temperature >= 0:
         st.markdown("## Get that pint down your neck !")
+        st.markdown("##### ")
         st.image(APRES_URL)
 
     # Fetch the combined data
-    combined_df = fetch_combined_data(snowfall_api_url, temperature_api_url)
+    combined_df = fetch_combined_data(snowdepth_api_url, temperature_api_url)
 
    # Display forecast chart
     st.markdown("##### ")
     st.markdown("### Next 48 hours snow depth (cm) and temperature (°C) forecast")
     st.plotly_chart(
-        create_forecast_chart(combined_df, value_vars=["Snowfall", "Temperature"]),
+        create_forecast_chart(combined_df, value_vars=["Snow Depth", "Temperature"]),
         use_container_width=True
         )
 
@@ -322,4 +362,3 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-##
