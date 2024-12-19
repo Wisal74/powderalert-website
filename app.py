@@ -10,8 +10,9 @@ import requests_cache
 
 # Constants
 HOCHFUEGEN_TZ = pytz.timezone("Europe/Vienna")
-WEBCAM_URL = "https://sts101.feratel.co.at/streams/stsstore105/1/05561_6762e97b-42c4Vid.mp4?dcsdesign=WTP_bergfex.at"
-
+WEBCAM_URL = "https://sts005.feratel.co.at/streams/stsstore002/1/05560_6763e65e-4693Vid.mp4?dcsdesign=WTP_bergfex.at"
+APRES_URL = "https://media.giphy.com/media/vwfcIIFVCEQCs8cFAs/giphy.gif"
+POWDER_URL = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnphNWxwMWFrc3p4ejhqcTN0Ymt2eXgxaHdwam9ia2RlaG1qaHJlMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UQJqOcrkNHK7BlJYBo/giphy.gif"
 # Dark blue theme colors
 DARK_BLUE = 'rgba(129, 203, 199, 0.5)'  # Dark blue with 0.9 opacity
 LIGHT_TEXT = '#FFFFFF'  # White text for contrast
@@ -167,29 +168,9 @@ if st.button("Get Forecast"):
     snowfall_api_url = "https://powderalert-884569188278.europe-west1.run.app/predict_snowfall?lat=47.26580883196723&long=11.84457426992035"
     temperature_api_url = "https://powderalert-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035"
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-    # Snowfall API request
-        try:
-            snowfall_response = requests.get(snowfall_api_url)
-            if snowfall_response.status_code == 200:
-                snowfall_data = snowfall_response.json()
-                #first_predict_time = snowfall_data.get("first_predict_time")
-                snowfall_predictions = snowfall_data.get("snowfall_prediction", [])
+    col1, col2, col3, = st.columns([1, 1, 1])
 
-                # Display snowfall predictions
-                st.markdown("#### Snowfall Forecast")
-                snowfall_placeholder = st.metric(
-                    label="Predicted Snowfall (cm)",
-                    value=f"{snowfall_predictions[0]:.2f} cm" if snowfall_predictions else "N/A",
-                    label_visibility='collapsed'
-                    #delta=f"First prediction at {first_predict_time}" if first_predict_time else "N/A"
-                )
-            else:
-                "Error retrieving snowfall data."
-        except Exception as e:
-            f"Error: {e}"
-    with col2:
+    with col1:
         # Temperature API request
         try:
             temperature_response = requests.get(temperature_api_url)
@@ -198,8 +179,8 @@ if st.button("Get Forecast"):
                 temperature_predictions = temperature_data.get("temperature_prediction", [])
 
                 # Display temperature predictions
-                st.markdown("#### Temperature Forecast")
-                temperature_placeholder = st.metric(
+                st.markdown("#### Temperature")
+                temperature = st.metric(
                     label="Predicted Temperature (°C)",
                     label_visibility='collapsed',
                     value=f"{round(temperature_predictions[0])} °C" if temperature_predictions else "N/A"
@@ -208,13 +189,58 @@ if st.button("Get Forecast"):
                 "Error retrieving temperature data."
         except Exception as e:
             f"Error: {e}"
+    with col2:
+    # Snow depth API request
+        try:
+            snowdepth_response = requests.get(snowfall_api_url)
+            if snowdepth_response.status_code == 200:
+                snowdepth_data = snowdepth_response.json()
+                snowdepth_predictions = snowdepth_data.get("snowfall_prediction", [])
+
+                # Display snowdepth predictions
+                st.markdown("#### Snow Depth")
+                snowdepth = st.metric(
+                    label="Predicted Snowfall (cm)",
+                    value=f"{snowdepth_predictions[0]:.2f} cm" if snowdepth_predictions else "N/A",
+                    label_visibility='collapsed'
+                )
+            else:
+                "Error retrieving snowfall data."
+        except Exception as e:
+            f"Error: {e}"
+    with col3:
+        # Wind speed API request
+        try:
+            windspeed_response = requests.get(temperature_api_url)
+            if temperature_response.status_code == 200:
+                windspeed_data = windspeed_response.json()
+                windspeed_predictions = windspeed_data.get("temperature_prediction", [])
+
+                # Display wind speed predictions
+                st.markdown("#### Wind Speed")
+                windspeed = st.metric(
+                    label="Predicted Temperature (°C)",
+                    label_visibility='collapsed',
+                    value=f"{round(windspeed_predictions[0])} km/h" if windspeed_predictions else "N/A"
+                )
+            else:
+                "Error retrieving temperature data."
+        except Exception as e:
+            f"Error: {e}"
+
+    if temperature_predictions[0] < 0:
+        st.markdown("## Put that pint down and go home !")
+        st.image(POWDER_URL)
+    elif temperature_predictions[0] >= 0:
+        st.markdown("## Get that pint down your neck !")
+        st.image(APRES_URL)
 
     # Fetch the combined data
     combined_df = fetch_combined_data(snowfall_api_url, temperature_api_url)
 
    # Display forecast chart
     st.markdown("##### ")
-    st.markdown("### Next 48 hours snowfall (cm) and temperature (°C) forecast")
+    st.markdown("### Next 48 hours snow depth (cm) and temperature (°C) forecast")
     st.plotly_chart(
         create_forecast_chart(combined_df, value_vars=["Snowfall", "Temperature"]),
         use_container_width=True
@@ -296,3 +322,4 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+##
