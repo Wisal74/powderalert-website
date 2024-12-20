@@ -10,7 +10,7 @@ import requests_cache
 
 # Constants
 HOCHFUEGEN_TZ = pytz.timezone("Europe/Vienna")
-WEBCAM_URL = "https://sts001.feratel.co.at/streams/stsstore005/1/05560_676529cf-faccVid.mp4?dcsdesign=WTP_bergfex.at"
+WEBCAM_URL = "https://sts068.feratel.co.at/streams/stsstore053/1/05560_67655e7d-9ec2Vid.mp4?dcsdesign=WTP_bergfex.at"
 APRES_URL = "https://media1.tenor.com/m/q9vlUNHHs1YAAAAC/eddo-bier.gif"
 POWDER_URL = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnphNWxwMWFrc3p4ejhqcTN0Ymt2eXgxaHdwam9ia2RlaG1qaHJlMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UQJqOcrkNHK7BlJYBo/giphy.gif"
 # Dark blue theme colors
