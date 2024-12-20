@@ -10,8 +10,8 @@ import requests_cache
 
 # Constants
 HOCHFUEGEN_TZ = pytz.timezone("Europe/Vienna")
-WEBCAM_URL = "https://sts110.feratel.co.at/streams/stsstore102/1/05560_67643e52-9f73Vid.mp4?dcsdesign=WTP_bergfex.at"
-APRES_URL = "https://media.giphy.com/media/vwfcIIFVCEQCs8cFAs/giphy.gif"
+WEBCAM_URL = "https://sts001.feratel.co.at/streams/stsstore005/1/05560_676529cf-faccVid.mp4?dcsdesign=WTP_bergfex.at"
+APRES_URL = "https://media1.tenor.com/m/q9vlUNHHs1YAAAAC/eddo-bier.gif"
 POWDER_URL = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnphNWxwMWFrc3p4ejhqcTN0Ymt2eXgxaHdwam9ia2RlaG1qaHJlMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UQJqOcrkNHK7BlJYBo/giphy.gif"
 # Dark blue theme colors
 DARK_BLUE = 'rgba(129, 203, 199, 0.5)'  # Dark blue with 0.9 opacity
@@ -72,12 +72,7 @@ def fetch_combined_data(snowdepth_url, temperature_url):
             snowdepth_data = snowdepth_response.json()
             snowdepth_first_predict_time = datetime.strptime(snowdepth_data["first_predict_time"], "%Y-%m-%dT%H:%M")
             snowdepth_list = snowdepth_data["snowdepth_prediction"]
-            snowdepth_predictions = []
-            for i in snowdepth_list:
-                snowdepth_predictions.append(i*100)
-            #breakpoint()
-            # st.write(snowdepth_predictions)
-            # st.write(type(snowdepth_predictions))
+            snowdepth_predictions = [i * 100 for i in snowdepth_list]
             snowdepth_dates = [snowdepth_first_predict_time + timedelta(hours=i) for i in range(len(snowdepth_predictions))]
         else:
             print(f"Error: Snowfall API returned status code {snowdepth_response.status_code}")
@@ -85,7 +80,6 @@ def fetch_combined_data(snowdepth_url, temperature_url):
 
         # Fetch temperature data
         temperature_response = requests.get(temperature_url)
-
         if temperature_response.status_code == 200:
             temperature_data = temperature_response.json()
             temperature_first_predict_time = datetime.strptime(temperature_data["first_predict_time"], "%Y-%m-%dT%H:%M")
@@ -95,17 +89,29 @@ def fetch_combined_data(snowdepth_url, temperature_url):
             print(f"Error: Temperature API returned status code {temperature_response.status_code}")
             return None
 
+        # Align start times
+        start_time = max(snowdepth_first_predict_time, temperature_first_predict_time)
+
+        # Truncate snow depth data
+        snowdepth_start_index = (start_time - snowdepth_first_predict_time).total_seconds() // 3600
+        snowdepth_start_index = int(max(0, snowdepth_start_index))  # Ensure index is non-negative
+        snowdepth_dates = snowdepth_dates[snowdepth_start_index:]
+        snowdepth_predictions = snowdepth_predictions[snowdepth_start_index:]
+
+        # Truncate temperature data
+        temperature_start_index = (start_time - temperature_first_predict_time).total_seconds() // 3600
+        temperature_start_index = int(max(0, temperature_start_index))  # Ensure index is non-negative
+        temperature_dates = temperature_dates[temperature_start_index:]
+        temperature_predictions = temperature_predictions[temperature_start_index:]
+
         # Ensure data alignment and combine into a single DataFrame
-        if snowdepth_dates == temperature_dates:
-            combined_df = pd.DataFrame({
-                "date": snowdepth_dates,
-                "Snow Depth": snowdepth_predictions,
-                "Temperature": temperature_predictions
-            })
-            return combined_df
-        else:
-            print("Error: Dates from Snowfall and Temperature predictions do not match.")
-            return None
+        min_length = min(len(snowdepth_dates), len(temperature_dates))
+        combined_df = pd.DataFrame({
+            "date": snowdepth_dates[:min_length],  # Use the shorter length
+            "Snow Depth": snowdepth_predictions[:min_length],
+            "Temperature": temperature_predictions[:min_length]
+        })
+        return combined_df
 
     except Exception as e:
         print(f"Error: API request failed with exception: {e}")
@@ -174,9 +180,9 @@ if st.button("Get Forecast"):
     selected_date, selected_hour = selected_time.split(" ")
 
     # API endpoints
-    snowdepth_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_snowdepth?lat=47.26580883196723&long=11.84457426992035"
-    temperature_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035"
-    windspeed_api_url = "https://powderalert-snowdepth-884569188278.europe-west1.run.app/predict_windspeed?lat=47.26580883196723&long=11.84457426992035"
+    snowdepth_api_url = "https://powderalert-demodayversion-884569188278.europe-west1.run.app/predict_snowdepth?lat=47.26580883196723&long=11.84457426992035"
+    temperature_api_url = "https://powderalert-demodayversion-884569188278.europe-west1.run.app/predict_temperature?lat=47.26580883196723&long=11.84457426992035"
+    windspeed_api_url = "https://powderalert-demodayversion-884569188278.europe-west1.run.app/predict_windspeed?lat=47.26580883196723&long=11.84457426992035"
     col1, col2, col3, = st.columns([1, 1, 1])
 
     with col1:
@@ -266,18 +272,18 @@ if st.button("Get Forecast"):
         except Exception as e:
             f"Error: {e}"
     st.markdown("#### ")
-    if selected_temperature < 0:
+    if float(selected_temperature) < 0:
         st.markdown("## Put that pint down and go home !")
         st.markdown("##### ")
         st.image(POWDER_URL)
-    elif selected_temperature >= 0:
+    elif float(selected_temperature) >= 0:
         st.markdown("## Get that pint down your neck !")
         st.markdown("##### ")
         st.image(APRES_URL)
 
     # Fetch the combined data
     combined_df = fetch_combined_data(snowdepth_api_url, temperature_api_url)
-
+    #st.write(combined_df)
    # Display forecast chart
     st.markdown("##### ")
     st.markdown("### Next 48 hours snow depth (cm) and temperature (°C) forecast")
